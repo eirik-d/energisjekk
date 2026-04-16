@@ -168,6 +168,25 @@
         .agent-section h3 { font-size: 1.05rem; font-weight: 800; margin-bottom: 8px; }
         .agent-section pre { background: rgba(255,255,255,0.08); border-radius: var(--finn-radius-sm); padding: 14px; font-size: 0.75rem; line-height: 1.5; overflow-x: auto; white-space: pre-wrap; color: #ccc; }
         .agent-section .copy-btn { background: var(--finn-blue-light); color: var(--finn-grey-6); border: none; padding: 6px 14px; border-radius: var(--finn-radius-sm); font-family: var(--finn-font); font-size: 0.75rem; font-weight: 700; cursor: pointer; margin-top: 8px; }
+
+        /* Language toggle */
+        .lang-toggle {
+            margin-left: auto;
+            display: flex;
+            background: rgba(255,255,255,0.12);
+            border-radius: 20px;
+            overflow: hidden;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+        .lang-toggle button {
+            background: none; border: none; color: rgba(255,255,255,0.5);
+            padding: 5px 12px; font-family: var(--finn-font); font-weight: 700;
+            font-size: 0.72rem; cursor: pointer; transition: all 0.2s;
+        }
+        .lang-toggle button.active {
+            background: rgba(255,255,255,0.25); color: white; border-radius: 20px;
+        }
     </style>
 </head>
 <body>
@@ -177,6 +196,10 @@
     <h1>EnergiSjekk</h1>
     <span class="badge">AI Agent Prototype</span>
     <span class="badge" style="background:var(--finn-green)">20 ekte boliger</span>
+    <div class="lang-toggle">
+        <button class="active" onclick="setLang('no')">NO</button>
+        <button onclick="setLang('en')">EN</button>
+    </div>
 </div>
 
 <div class="container">
@@ -208,6 +231,149 @@
 </div>
 
 <script>
+let lang = 'no';
+const T = {
+    no: {
+        title: 'EnergiSjekk',
+        headerBadge: 'AI Agent Prototype',
+        headerCount: '20 ekte boliger',
+        introH2: 'Sammenlign energikostnader for ekte FINN-boliger',
+        introP: 'Velg 2\u20135 boliger fra databasen under. Agenten beregner energikostnad i NOK, CO\u2082-utslipp, 10-\u00e5rs totalkostnad og oppgraderingspotensial basert p\u00e5 energimerke, areal, bygge\u00e5r og oppvarmingskilde.',
+        addLabel: 'Legg til bolig',
+        selectPlaceholder: 'Velg en bolig...',
+        addBtn: '+ Legg til',
+        runBtn: 'Kj\u00f8r EnergiSjekk',
+        loading: 'EnergiSjekk-agenten analyserer boligene...',
+        alertMin: 'Velg minst 2 boliger.',
+        alertMax: 'Maks 5 boliger.',
+        summaryDiff: (kr) => `${kr} forskjell i \u00e5rlig energikostnad`,
+        summaryText: (worst, wl, kr, best, bl, kr10, co2) => `${worst} (${wl}) koster ${kr} mer i energi per \u00e5r enn ${best} (${bl}). Over 10 \u00e5r: ${kr10}. CO\u2082-forskjell: ${co2}/\u00e5r.`,
+        energyLabel: 'Energimerke',
+        energyCostYr: 'Energikostnad/\u00e5r',
+        co2Yr: 'CO\u2082/\u00e5r',
+        costM2: 'Kostnad/m\u00b2',
+        felleskost: 'Felleskostnader',
+        rooms: 'rom',
+        barKwhTitle: 'Energiforbruk (kWh/\u00e5r)',
+        barCostTitle: '\u00c5rlig energikostnad (kr)',
+        tableTitle: 'Detaljert sammenligning',
+        rowLabel: 'Energimerke',
+        rowPrice: 'Prisantydning',
+        rowArea: 'Areal (BRA-i)',
+        rowYear: 'Bygge\u00e5r',
+        rowHeating: 'Oppvarming',
+        rowFelles: 'Felleskost/mnd',
+        rowKwhM2: 'kWh/m\u00b2/\u00e5r',
+        rowTotalKwh: 'Totalt forbruk',
+        rowCostYr: 'Energikostnad/\u00e5r',
+        rowCo2: 'CO\u2082/\u00e5r',
+        tcoTitle: 'Totalkostnad over 10 \u00e5r (kj\u00f8p + energi + felleskostnader)',
+        tcoBuy: 'Kj\u00f8p',
+        tcoEnergy: 'Energi',
+        tcoFelles: 'Fellesutg',
+        tcoVerdict: (addr, kr) => `${addr} er ${kr} rimeligere`,
+        tcoVerdictSub: 'over 10 \u00e5r n\u00e5r man inkluderer kj\u00f8pspris, energi og felleskostnader',
+        renoTitle: (addr, from, to) => `Oppgraderingspotensial: ${addr} (${from} \u2192 ${to})`,
+        renoSub: 'Estimerte kostnader for energioppgradering',
+        renoInsulation: 'Etterisolering + vinduer',
+        renoHeatpump: 'Varmepumpe (luft-luft)',
+        renoFull: 'Full oppgradering',
+        renoSavings40: 'Sparer ~40% energi',
+        renoSavings25: 'Sparer ~25% energi',
+        renoPayback: (y) => `Nedbetalt p\u00e5 ~${y} \u00e5r`,
+        enovaText: 'Enova gir <strong>\u00a0opptil 30% tilskudd\u00a0</strong> til energioppgradering. Sjekk enova.no for st\u00f8tteordninger.',
+        footnote: '<strong>Metode:</strong> Energiforbruk beregnet fra energimerke (kWh/m\u00b2/\u00e5r) iht. Energimerkeforskriften. Str\u00f8mpris: gjennomsnittlig NordPool Oslo-region (NO1) 2024/2025 inkl. nettleie og avgifter \u2248 1,85 kr/kWh. CO\u2082-utslipp: europeisk residualmiks (~350 gCO\u2082/kWh). Norsk grid: ~19 gCO\u2082/kWh. Alle bel\u00f8p eks. evt. pris\u00f8kninger. Energimerker er beregnet (ikke m\u00e5lt) \u2014 egnet for relativ sammenligning.',
+        agentTitle: 'AI Agent System Prompt',
+        copyBtn: 'Kopier prompt',
+        sourcePrefix: 'Data scraped from FINN.no',
+        sourceSuffix: 'Beregninger er veiledende',
+        perMonth: '/mnd',
+    },
+    en: {
+        title: 'EnergiSjekk',
+        headerBadge: 'AI Agent Prototype',
+        headerCount: '20 real properties',
+        introH2: 'Compare energy costs for real FINN properties',
+        introP: 'Select 2\u20135 properties from the database below. The agent calculates energy cost in NOK, CO\u2082 emissions, 10-year total cost of ownership, and renovation potential based on energy label, size, building year, and heating source.',
+        addLabel: 'Add property',
+        selectPlaceholder: 'Select a property...',
+        addBtn: '+ Add',
+        runBtn: 'Run EnergiSjekk',
+        loading: 'The EnergiSjekk agent is analyzing the properties...',
+        alertMin: 'Select at least 2 properties.',
+        alertMax: 'Maximum 5 properties.',
+        summaryDiff: (kr) => `${kr} difference in annual energy cost`,
+        summaryText: (worst, wl, kr, best, bl, kr10, co2) => `${worst} (${wl}) costs ${kr} more in energy per year than ${best} (${bl}). Over 10 years: ${kr10}. CO\u2082 difference: ${co2}/year.`,
+        energyLabel: 'Energy label',
+        energyCostYr: 'Energy cost/yr',
+        co2Yr: 'CO\u2082/yr',
+        costM2: 'Cost/m\u00b2',
+        felleskost: 'Common charges',
+        rooms: 'rooms',
+        barKwhTitle: 'Energy consumption (kWh/yr)',
+        barCostTitle: 'Annual energy cost (NOK)',
+        tableTitle: 'Detailed comparison',
+        rowLabel: 'Energy label',
+        rowPrice: 'Asking price',
+        rowArea: 'Area (BRA-i)',
+        rowYear: 'Year built',
+        rowHeating: 'Heating',
+        rowFelles: 'Common charges/mo',
+        rowKwhM2: 'kWh/m\u00b2/yr',
+        rowTotalKwh: 'Total consumption',
+        rowCostYr: 'Energy cost/yr',
+        rowCo2: 'CO\u2082/yr',
+        tcoTitle: 'Total cost over 10 years (purchase + energy + common charges)',
+        tcoBuy: 'Purchase',
+        tcoEnergy: 'Energy',
+        tcoFelles: 'Common',
+        tcoVerdict: (addr, kr) => `${addr} is ${kr} cheaper`,
+        tcoVerdictSub: 'over 10 years including purchase price, energy, and common charges',
+        renoTitle: (addr, from, to) => `Renovation potential: ${addr} (${from} \u2192 ${to})`,
+        renoSub: 'Estimated costs for energy renovation',
+        renoInsulation: 'Insulation + windows',
+        renoHeatpump: 'Heat pump (air-air)',
+        renoFull: 'Full upgrade',
+        renoSavings40: 'Saves ~40% energy',
+        renoSavings25: 'Saves ~25% energy',
+        renoPayback: (y) => `Payback in ~${y} years`,
+        enovaText: 'Enova provides <strong>\u00a0up to 30% grants\u00a0</strong> for energy upgrades. Check enova.no for current support schemes.',
+        footnote: '<strong>Method:</strong> Energy consumption estimated from energy label (kWh/m\u00b2/yr) per Norwegian Energy Labeling Regulations. Electricity price: average NordPool Oslo region (NO1) 2024/2025 incl. grid fees and taxes \u2248 NOK 1.85/kWh. CO\u2082 emissions: European residual mix (~350 gCO\u2082/kWh). Norwegian grid: ~19 gCO\u2082/kWh. All amounts excl. potential price increases. Labels are calculated (not metered) \u2014 suitable for relative comparison.',
+        agentTitle: 'AI Agent System Prompt',
+        copyBtn: 'Copy prompt',
+        sourcePrefix: 'Data scraped from FINN.no',
+        sourceSuffix: 'Calculations are indicative',
+        perMonth: '/mo',
+    }
+};
+
+function t(key) { return T[lang][key]; }
+
+function setLang(l) {
+    lang = l;
+    document.querySelectorAll('.lang-toggle button').forEach(b => {
+        b.classList.toggle('active', b.textContent === l.toUpperCase());
+    });
+    updateStaticText();
+    if (document.getElementById('results').classList.contains('active')) {
+        renderResults();
+    }
+}
+
+function updateStaticText() {
+    document.querySelector('.header h1').textContent = t('title');
+    document.querySelectorAll('.header .badge')[0].textContent = t('headerBadge');
+    document.querySelectorAll('.header .badge')[1].textContent = t('headerCount');
+    document.querySelector('.intro h2').textContent = t('introH2');
+    document.querySelector('.intro p').textContent = t('introP');
+    document.querySelector('.sel-group label').textContent = t('addLabel');
+    const selEl = document.getElementById('propSelect');
+    selEl.options[0].textContent = t('selectPlaceholder');
+    document.querySelector('.btn:not(.btn-secondary)').textContent = t('addBtn');
+    document.querySelector('.btn-secondary').textContent = t('runBtn');
+    document.querySelector('.loading p').textContent = t('loading');
+}
+
 const PROPERTIES = [
   {
     finnkode:"445268582", address:"Griniveien 4G", area:"Roa", city:"Oslo",
@@ -374,7 +540,7 @@ function fkg(n) { return n >= 1000 ? (n/1000).toFixed(1).replace('.',',') + ' to
 function addProperty() {
     const fk = sel.value;
     if (!fk || selected.includes(fk)) return;
-    if (selected.length >= 5) { alert('Maks 5 boliger.'); return; }
+    if (selected.length >= 5) { alert(t('alertMax')); return; }
     selected.push(fk);
     renderPills();
     sel.value = '';
@@ -394,7 +560,7 @@ function renderPills() {
 }
 
 function runAgent() {
-    if (selected.length < 2) { alert('Velg minst 2 boliger.'); return; }
+    if (selected.length < 2) { alert(t('alertMin')); return; }
     document.getElementById('results').classList.remove('active');
     document.getElementById('loading').classList.add('active');
     setTimeout(() => {
@@ -426,8 +592,8 @@ function renderResults() {
     html += `<div class="summary-banner">
         <div class="summary-icon">⚡</div>
         <div class="summary-text">
-            <h3>${fkr(costDiff)} forskjell i arlig energikostnad</h3>
-            <p>${worst.address} (${worst.energyLabel}) koster ${fkr(costDiff)} mer i energi per ar enn ${best.address} (${best.energyLabel}). Over 10 ar: ${fkr(costDiff * 10)}. CO&#8322;-forskjell: ${fkg(worst.co2 - best.co2)}/ar.</p>
+            <h3>${t('summaryDiff')(fkr(costDiff))}</h3>
+            <p>${t('summaryText')(worst.address, worst.energyLabel, fkr(costDiff), best.address, best.energyLabel, fkr(costDiff * 10), fkg(worst.co2 - best.co2))}</p>
         </div>
     </div>`;
 
@@ -442,14 +608,14 @@ function renderResults() {
             <div class="body">
                 <div class="label-tag" style="color:${ENERGY_COLORS[d.energyLabel]}">Finnkode ${d.finnkode}</div>
                 <div class="addr">${d.address}</div>
-                <div class="meta">${d.area}, ${d.city} · ${d.size} m² · ${d.rooms} rom · ${d.yearBuilt}</div>
+                <div class="meta">${d.area}, ${d.city} · ${d.size} m² · ${d.rooms} ${t('rooms')} · ${d.yearBuilt}</div>
                 <div class="price">${fkr(d.price)}</div>
-                <div class="energy-badge" style="background:${ENERGY_COLORS[d.energyLabel]}">Energimerke ${d.energyLabel} · ${ENERGY_KWH[d.energyLabel]} kWh/m²/ar</div>
+                <div class="energy-badge" style="background:${ENERGY_COLORS[d.energyLabel]}">${t('energyLabel')} ${d.energyLabel} · ${ENERGY_KWH[d.energyLabel]} kWh/m²/yr</div>
                 <div class="stats">
-                    <div class="stat"><div class="s-label">Energikostnad/ar</div><div class="s-value ${isBest?'good':isWorst?'bad':''}">${fkr(d.cost)}</div></div>
-                    <div class="stat"><div class="s-label">CO&#8322;/ar</div><div class="s-value">${fkg(d.co2)}</div></div>
-                    <div class="stat"><div class="s-label">Kostnad/m²</div><div class="s-value">${fkr(d.costPerM2)}/m²</div></div>
-                    <div class="stat"><div class="s-label">Felleskostnader</div><div class="s-value">${fkr(d.felleskostnader)}/mnd</div></div>
+                    <div class="stat"><div class="s-label">${t('energyCostYr')}</div><div class="s-value ${isBest?'good':isWorst?'bad':''}">${fkr(d.cost)}</div></div>
+                    <div class="stat"><div class="s-label">${t('co2Yr')}</div><div class="s-value">${fkg(d.co2)}</div></div>
+                    <div class="stat"><div class="s-label">${t('costM2')}</div><div class="s-value">${fkr(d.costPerM2)}/m²</div></div>
+                    <div class="stat"><div class="s-label">${t('felleskost')}</div><div class="s-value">${fkr(d.felleskostnader)}${t('perMonth')}</div></div>
                 </div>
             </div>
         </div>`;
@@ -457,7 +623,7 @@ function renderResults() {
     html += '</div>';
 
     // Bar charts
-    html += `<div class="section-card"><h3>Energiforbruk (kWh/ar)</h3>`;
+    html += `<div class="section-card"><h3>${t('barKwhTitle')}</h3>`;
     data.forEach(d => {
         html += `<div class="bar-row">
             <div class="bar-label">${d.address} (${d.energyLabel})</div>
@@ -466,7 +632,7 @@ function renderResults() {
     });
     html += `</div>`;
 
-    html += `<div class="section-card"><h3>Arlig energikostnad (kr)</h3>`;
+    html += `<div class="section-card"><h3>${t('barCostTitle')}</h3>`;
     data.forEach(d => {
         html += `<div class="bar-row">
             <div class="bar-label">${d.address}</div>
@@ -476,22 +642,22 @@ function renderResults() {
     html += `</div>`;
 
     // Comparison table
-    html += `<div class="section-card"><h3>Detaljert sammenligning</h3><table class="comp-table"><thead><tr><th></th>`;
+    html += `<div class="section-card"><h3>${t('tableTitle')}</h3><table class="comp-table"><thead><tr><th></th>`;
     data.forEach(d => html += `<th>${d.address}</th>`);
     html += '</tr></thead><tbody>';
     const bestCost = Math.min(...data.map(d => d.cost));
     const worstCost = Math.max(...data.map(d => d.cost));
     const rows = [
-        ['Energimerke', d => `<span style="color:${ENERGY_COLORS[d.energyLabel]};font-weight:700">${d.energyLabel}</span>`],
-        ['Prisantydning', d => fkr(d.price)],
-        ['Areal (BRA-i)', d => d.size + ' m²'],
-        ['Bygger', d => d.yearBuilt],
-        ['Oppvarming', d => d.heating],
-        ['Felleskost/mnd', d => fkr(d.felleskostnader)],
-        ['kWh/m²/ar', d => ENERGY_KWH[d.energyLabel]],
-        ['Totalt forbruk', d => d.kwh.toLocaleString('nb-NO') + ' kWh'],
-        ['Energikostnad/ar', d => { const cls = d.cost === bestCost ? 'best-val' : d.cost === worstCost ? 'worst-val' : 'hl'; return `<span class="${cls}">${fkr(d.cost)}</span>`; }],
-        ['CO&#8322;/ar', d => fkg(d.co2)],
+        [t('rowLabel'), d => `<span style="color:${ENERGY_COLORS[d.energyLabel]};font-weight:700">${d.energyLabel}</span>`],
+        [t('rowPrice'), d => fkr(d.price)],
+        [t('rowArea'), d => d.size + ' m²'],
+        [t('rowYear'), d => d.yearBuilt],
+        [t('rowHeating'), d => d.heating],
+        [t('rowFelles'), d => fkr(d.felleskostnader)],
+        [t('rowKwhM2'), d => ENERGY_KWH[d.energyLabel]],
+        [t('rowTotalKwh'), d => d.kwh.toLocaleString('nb-NO') + ' kWh'],
+        [t('rowCostYr'), d => { const cls = d.cost === bestCost ? 'best-val' : d.cost === worstCost ? 'worst-val' : 'hl'; return `<span class="${cls}">${fkr(d.cost)}</span>`; }],
+        [t('rowCo2'), d => fkg(d.co2)],
     ];
     rows.forEach(([label, fn]) => {
         html += `<tr><td class="rl">${label}</td>`;
@@ -501,7 +667,7 @@ function renderResults() {
     html += '</tbody></table></div>';
 
     // TCO
-    html += `<div class="tco"><h3>Totalkostnad over 10 ar (kjop + energi + felleskostnader)</h3><div class="tco-grid" style="grid-template-columns:repeat(${Math.min(data.length,5)},1fr)">`;
+    html += `<div class="tco"><h3>${t('tcoTitle')}</h3><div class="tco-grid" style="grid-template-columns:repeat(${Math.min(data.length,5)},1fr)">`;
     const tcos = data.map(d => {
         const tco = d.totalPrice + (d.cost * 10) + (d.felleskostnader * 12 * 10);
         return { ...d, tco };
@@ -513,12 +679,12 @@ function renderResults() {
         html += `<div class="tco-card">
             <h4>${t.address} (${t.energyLabel})</h4>
             <div class="amount">${fkr(t.tco)}</div>
-            <div class="detail">Kjop: ${fkr(t.totalPrice)} · Energi: ${fkr(t.cost*10)} · Fellesutg: ${fkr(t.felleskostnader*120)}</div>
+            <div class="detail">${T[lang].tcoBuy}: ${fkr(t.totalPrice)} · ${T[lang].tcoEnergy}: ${fkr(t.cost*10)} · ${T[lang].tcoFelles}: ${fkr(t.felleskostnader*120)}</div>
         </div>`;
     });
     html += `</div><div class="tco-verdict">
-        <div class="diff">${cheapest.address} er ${fkr(mostExpensive.tco - cheapest.tco)} rimeligere</div>
-        <p>over 10 ar nar man inkluderer kjopspris, energi og felleskostnader</p>
+        <div class="diff">${t('tcoVerdict')(cheapest.address, fkr(mostExpensive.tco - cheapest.tco))}</div>
+        <p>${t('tcoVerdictSub')}</p>
     </div></div>`;
 
     // Renovation section for worst property
@@ -527,28 +693,23 @@ function renderResults() {
         const annualSave = worst.cost - best.cost;
         const payback = annualSave > 0 ? Math.round(upgradeCost / annualSave) : 99;
         html += `<div class="section-card">
-            <h3>Oppgraderingspotensial: ${worst.address} (${worst.energyLabel} → ${best.energyLabel})</h3>
-            <p style="color:var(--finn-grey-4);font-size:0.85rem;margin-bottom:14px">Estimerte kostnader for energioppgradering</p>
+            <h3>${t('renoTitle')(worst.address, worst.energyLabel, best.energyLabel)}</h3>
+            <p style="color:var(--finn-grey-4);font-size:0.85rem;margin-bottom:14px">${t('renoSub')}</p>
             <div class="reno-grid">
-                <div class="reno-card"><h4>Etterisolering + vinduer</h4><div class="cost">${fkr(worst.size*2500)}</div><div class="sav">Sparer ~40% energi</div></div>
-                <div class="reno-card"><h4>Varmepumpe (luft-luft)</h4><div class="cost">25 000–40 000 kr</div><div class="sav">Sparer ~25% energi</div></div>
-                <div class="reno-card"><h4>Full oppgradering</h4><div class="cost">${fkr(upgradeCost)}</div><div class="sav">Nedbetalt pa ~${payback} ar</div></div>
+                <div class="reno-card"><h4>${t('renoInsulation')}</h4><div class="cost">${fkr(worst.size*2500)}</div><div class="sav">${t('renoSavings40')}</div></div>
+                <div class="reno-card"><h4>${t('renoHeatpump')}</h4><div class="cost">25 000–40 000 kr</div><div class="sav">${t('renoSavings25')}</div></div>
+                <div class="reno-card"><h4>${t('renoFull')}</h4><div class="cost">${fkr(upgradeCost)}</div><div class="sav">${t('renoPayback')(payback)}</div></div>
             </div>
-            <div class="enova-box">🏠 Enova gir <strong>&nbsp;opptil 30% tilskudd&nbsp;</strong> til energioppgradering. Sjekk enova.no for stotteordninger.</div>
+            <div class="enova-box">🏠 ${t('enovaText')}</div>
         </div>`;
     }
 
     // Footnote
-    html += `<div class="footnote">
-        <strong>Metode:</strong> Energiforbruk beregnet fra energimerke (kWh/m²/ar) iht. Energimerkeforskriften.
-        Strompris: gjennomsnittlig NordPool Oslo-region (NO1) 2024/2025 inkl. nettleie og avgifter ≈ 1,85 kr/kWh.
-        CO&#8322;-utslipp: europeisk residualmiks (~350 gCO&#8322;/kWh). Norsk grid: ~19 gCO&#8322;/kWh.
-        Alle belop eks. evt. prisokninger. Energimerker er beregnet (ikke malt) — egnet for relativ sammenligning.
-    </div>`;
+    html += `<div class="footnote">${t('footnote')}</div>`;
 
     // Agent prompt
     html += `<div class="agent-section">
-        <h3>AI Agent System Prompt</h3>
+        <h3>${t('agentTitle')}</h3>
         <pre id="agentPrompt">You are EnergiSjekk — Property Energy Comparison Agent.
 
 ROLE: Product Strategist, Real Estate Technology
@@ -577,11 +738,11 @@ WORKFLOW:
 6. Note uncertainties and suggest next steps
 
 DATA: 20 real Oslo properties (A-G labels, 20-140m2, 1890-2026) loaded.</pre>
-        <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('agentPrompt').textContent)">Kopier prompt</button>
+        <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('agentPrompt').textContent)">${t('copyBtn')}</button>
     </div>`;
 
     // Sources
-    html += `<div class="source-tag">Data scraped from FINN.no ${new Date().toLocaleDateString('nb-NO')} · ${data.map(d => `<a href="https://www.finn.no/realestate/homes/ad.html?finnkode=${d.finnkode}" target="_blank">${d.finnkode}</a>`).join(' · ')} · Beregninger er veiledende</div>`;
+    html += `<div class="source-tag">${t('sourcePrefix')} ${new Date().toLocaleDateString(lang === 'no' ? 'nb-NO' : 'en-GB')} · ${data.map(d => `<a href="https://www.finn.no/realestate/homes/ad.html?finnkode=${d.finnkode}" target="_blank">${d.finnkode}</a>`).join(' · ')} · ${t('sourceSuffix')}</div>`;
 
     document.getElementById('results').innerHTML = html;
 
