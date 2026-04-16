@@ -73,10 +73,23 @@
             border-radius: 20px; padding: 4px 12px; font-size: 0.8rem; font-weight: 500;
         }
         .pill .remove { cursor: pointer; color: var(--finn-coral); font-weight: 700; font-size: 0.9rem; }
-        .pill .occ-ctrl { display: inline-flex; align-items: center; gap: 3px; margin-left: 2px; }
-        .pill .occ-btn { background: var(--finn-blue-dark); color: white; border: none; width: 18px; height: 18px; border-radius: 50%; font-size: 0.7rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
-        .pill .occ-btn:hover { background: #0052d4; }
-        .pill .occ-val { font-weight: 700; font-size: 0.78rem; min-width: 14px; text-align: center; }
+
+        /* Household settings panel */
+        .household-panel {
+            background: white; border-radius: var(--finn-radius-lg); padding: 24px 28px; margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 2px solid var(--finn-blue-light);
+        }
+        .household-panel h3 { font-size: 1.05rem; font-weight: 800; margin-bottom: 4px; }
+        .household-panel .sub { font-size: 0.82rem; color: var(--finn-grey-4); margin-bottom: 16px; }
+        .hh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 600px) { .hh-grid { grid-template-columns: 1fr; } }
+        .hh-field label { display: block; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--finn-grey-5); margin-bottom: 4px; }
+        .hh-field select, .hh-field input[type=number] {
+            width: 100%; padding: 8px 10px; border: 2px solid var(--finn-grey-2); border-radius: var(--finn-radius-sm);
+            font-family: var(--finn-font); font-size: 0.85rem; background: white;
+        }
+        .hh-field select:focus, .hh-field input:focus { outline: none; border-color: var(--finn-blue-dark); }
+        .hh-field .hint { font-size: 0.68rem; color: var(--finn-grey-3); margin-top: 2px; }
 
         /* Loading */
         .loading { display: none; text-align: center; padding: 50px 20px; }
@@ -286,7 +299,7 @@ const T = {
         renoSavings25: 'Sparer ~25% energi',
         renoPayback: (y) => `Nedbetalt p\u00e5 ~${y} \u00e5r`,
         enovaText: 'Enova gir <strong>\u00a0opptil 30% tilskudd\u00a0</strong> til energioppgradering. Sjekk enova.no for st\u00f8tteordninger.',
-        footnote: '<strong>Metode:</strong> Energiforbruk beregnet fra energimerke (kWh/m\u00b2/\u00e5r) iht. Energimerkeforskriften. Str\u00f8mpris: gjennomsnittlig NordPool Oslo-region (NO1) 2024/2025 inkl. nettleie og avgifter \u2248 1,85 kr/kWh. CO\u2082-utslipp: europeisk residualmiks (~350 gCO\u2082/kWh). Norsk grid: ~19 gCO\u2082/kWh. Alle bel\u00f8p eks. evt. pris\u00f8kninger. Energimerker er beregnet (ikke m\u00e5lt) \u2014 egnet for relativ sammenligning.',
+        footnote: '<strong>Metode (v2):</strong> Energiforbruk fra energimerke (kWh/m\u00b2/\u00e5r, norsk flerboligskala). Husstandsjustering: 60% oppvarming, 20% varmtvann, 20% apparater \u2014 multiplisert med profilfaktorer. Temperatursensitivitet: 5\u201310%/\u00b0C avhengig av bygningskropp. Str\u00f8mpris: NordPool NO1 base ~1,05 kr/kWh. CO\u2082: AIB europeisk residualmiks 420 gCO\u2082/kWh (norsk grid: ~15 gCO\u2082/kWh). Energimerker er beregnet (ikke m\u00e5lt) \u2014 egnet for relativ sammenligning.',
         agentTitle: 'AI Agent System Prompt',
         copyBtn: 'Kopier prompt',
         sourcePrefix: 'Data scraped from FINN.no',
@@ -296,7 +309,17 @@ const T = {
         occupants: 'Beboere',
         occupantEnergy: 'Personforbruk',
         buildingEnergy: 'Bygningsforbruk',
-        occupantNote: 'Inkl. personforbruk: ~2 500 kWh/person/\u00e5r (varmtvann, apparater, belysning)',
+        occupantNote: 'Inkl. personforbruk: varmtvann, apparater, belysning (justert etter husstandsprofil)',
+        hhTitle: 'Husstandsprofil',
+        hhSub: 'Juster for \u00e5 se hvordan antall beboere, temperatur og elbil p\u00e5virker energikostnadene.',
+        hhOccupants: 'Antall beboere',
+        hhProfile: 'Husstandstype',
+        hhProfileOpts: ['Enslig', 'Par uten barn', 'Familie m/sm\u00e5 barn (0\u201312)', 'Familie m/tenåringer'],
+        hhTemp: 'Innetemperatur',
+        hhTempHint: 'Effekt per °C: ~5% (A/B), ~7% (C), ~8\u201310% (D\u2013G)',
+        hhEv: 'Elbil-lading',
+        hhEvOpts: ['Ingen elbil', '1 elbil (~4 500 kWh/\u00e5r)', '2 elbiler (~7 500 kWh/\u00e5r)'],
+        hhUpdate: 'Oppdater beregning',
     },
     en: {
         title: 'EnergiSjekk',
@@ -347,7 +370,7 @@ const T = {
         renoSavings25: 'Saves ~25% energy',
         renoPayback: (y) => `Payback in ~${y} years`,
         enovaText: 'Enova provides <strong>\u00a0up to 30% grants\u00a0</strong> for energy upgrades. Check enova.no for current support schemes.',
-        footnote: '<strong>Method:</strong> Energy consumption estimated from energy label (kWh/m\u00b2/yr) per Norwegian Energy Labeling Regulations. Electricity price: average NordPool Oslo region (NO1) 2024/2025 incl. grid fees and taxes \u2248 NOK 1.85/kWh. CO\u2082 emissions: European residual mix (~350 gCO\u2082/kWh). Norwegian grid: ~19 gCO\u2082/kWh. All amounts excl. potential price increases. Labels are calculated (not metered) \u2014 suitable for relative comparison.',
+        footnote: '<strong>Method (v2):</strong> Energy from label (kWh/m\u00b2/yr, Norwegian multi-dwelling scale). Household adjustment: 60% heating, 20% DHW, 20% appliances \u2014 multiplied by profile factors. Temperature sensitivity: 5\u201310%/\u00b0C depending on building envelope. Electricity: NordPool NO1 base ~1.05 NOK/kWh. CO\u2082: AIB European Residual Mix 420 gCO\u2082/kWh (Norwegian grid: ~15 gCO\u2082/kWh). Labels are calculated (not metered) \u2014 suitable for relative comparison.',
         agentTitle: 'AI Agent System Prompt',
         copyBtn: 'Copy prompt',
         sourcePrefix: 'Data scraped from FINN.no',
@@ -357,7 +380,17 @@ const T = {
         occupants: 'Occupants',
         occupantEnergy: 'Occupant usage',
         buildingEnergy: 'Building usage',
-        occupantNote: 'Incl. occupant usage: ~2,500 kWh/person/yr (hot water, appliances, lighting)',
+        occupantNote: 'Incl. occupant usage: hot water, appliances, lighting (adjusted by household profile)',
+        hhTitle: 'Household profile',
+        hhSub: 'Adjust to see how occupants, temperature, and EV charging affect energy costs.',
+        hhOccupants: 'Number of occupants',
+        hhProfile: 'Household type',
+        hhProfileOpts: ['Single person', 'Couple, no children', 'Family w/young children (0\u201312)', 'Family w/teenagers'],
+        hhTemp: 'Indoor temperature',
+        hhTempHint: 'Impact per °C: ~5% (A/B), ~7% (C), ~8\u201310% (D\u2013G)',
+        hhEv: 'EV charging',
+        hhEvOpts: ['No EV', '1 EV (~4,500 kWh/yr)', '2 EVs (~7,500 kWh/yr)'],
+        hhUpdate: 'Update calculation',
     }
 };
 
@@ -531,14 +564,23 @@ const PROPERTIES = [
   }
 ];
 
-// Energy label -> kWh/m2/year midpoints
-const ENERGY_KWH = { A:95, B:120, C:155, D:205, E:265, F:340, G:430 };
+// v2 energy label -> kWh/m2/year midpoints (Norwegian flerbolig scale)
+const ENERGY_KWH = { A:75, B:95, C:120, D:150, E:180, F:225, G:280 };
 const ENERGY_COLORS = { A:'#00A651', B:'#50B848', C:'#BFD730', D:'#FFF200', E:'#FCB813', F:'#F37021', G:'#ED1C24' };
-const ELEC_PRICE = 1.85; // kr/kWh NO1
-const CO2_KWH = 0.350; // kgCO2/kWh European residual mix
+const ELEC_PRICE = 1.05; // kr/kWh NO1 base (excl. nettleie — added separately)
+const CO2_KWH = 0.420; // kgCO2/kWh AIB European Residual Mix
 
-let selected = []; // [{finnkode, occupants}]
-const KWH_PER_PERSON = 2500; // hot water, appliances, lighting per person per year
+let selected = []; // [finnkode strings]
+
+// Household profile multipliers (v2 decomposition: 60% heat, 20% DHW, 20% appliances)
+const PROFILES = [
+    { dhw: 0.55, appliance: 0.70 }, // single
+    { dhw: 1.00, appliance: 1.00 }, // couple (baseline)
+    { dhw: 1.50, appliance: 1.30 }, // family young kids
+    { dhw: 1.80, appliance: 2.00 }, // family teenagers
+];
+const TEMP_SENSITIVITY = { A:0.05, B:0.05, C:0.07, D:0.08, E:0.09, F:0.10, G:0.10 };
+const EV_KWH = [0, 4500, 7500]; // none, 1 EV, 2 EVs
 
 // Populate dropdown
 const sel = document.getElementById('propSelect');
@@ -554,38 +596,23 @@ function fkg(n) { return n >= 1000 ? (n/1000).toFixed(1).replace('.',',') + ' to
 
 function addProperty() {
     const fk = sel.value;
-    if (!fk || selected.find(s => s.finnkode === fk)) return;
+    if (!fk || selected.includes(fk)) return;
     if (selected.length >= 5) { alert(t('alertMax')); return; }
-    selected.push({ finnkode: fk, occupants: 1 });
+    selected.push(fk);
     renderPills();
     sel.value = '';
 }
 
 function removeProperty(fk) {
-    selected = selected.filter(s => s.finnkode !== fk);
+    selected = selected.filter(s => s !== fk);
     renderPills();
-}
-
-function changeOccupants(fk, delta) {
-    const entry = selected.find(s => s.finnkode === fk);
-    if (entry) {
-        entry.occupants = Math.max(1, Math.min(8, entry.occupants + delta));
-        renderPills();
-    }
 }
 
 function renderPills() {
     const div = document.getElementById('pills');
-    div.innerHTML = selected.map(s => {
-        const p = PROPERTIES.find(x => x.finnkode === s.finnkode);
-        return `<span class="pill">${p.address} (${p.energyLabel})
-            <span class="occ-ctrl">
-                <button class="occ-btn" onclick="changeOccupants('${s.finnkode}',-1)">&minus;</button>
-                <span class="occ-val">${s.occupants}</span>
-                <button class="occ-btn" onclick="changeOccupants('${s.finnkode}',1)">+</button>
-                <span style="font-size:0.65rem;color:var(--finn-grey-4)">${t('persons')}</span>
-            </span>
-            <span class="remove" onclick="removeProperty('${s.finnkode}')">&times;</span></span>`;
+    div.innerHTML = selected.map(fk => {
+        const p = PROPERTIES.find(x => x.finnkode === fk);
+        return `<span class="pill">${p.address} (${p.energyLabel}) <span class="remove" onclick="removeProperty('${fk}')">&times;</span></span>`;
     }).join('');
 }
 
@@ -600,15 +627,37 @@ function runAgent() {
     }, 2200);
 }
 
+function getHouseholdParams() {
+    const occ = parseInt(document.getElementById('hhOcc')?.value) || 2;
+    const prof = parseInt(document.getElementById('hhProf')?.value) || 1;
+    const temp = parseInt(document.getElementById('hhTemp')?.value) || 21;
+    const ev = parseInt(document.getElementById('hhEv')?.value) || 0;
+    return { occ, prof, temp, ev };
+}
+
+function calcProperty(p, hh) {
+    const profile = PROFILES[hh.prof];
+    const baseKwh = ENERGY_KWH[p.energyLabel] * p.size;
+    const tempDelta = hh.temp - 21; // baseline 21°C
+    const sens = TEMP_SENSITIVITY[p.energyLabel];
+    const heatFactor = 1.0 + (tempDelta * sens);
+    const buildingKwh = Math.round(baseKwh * (
+        0.60 * heatFactor +
+        0.20 * profile.dhw * (hh.occ / 2) +
+        0.20 * profile.appliance
+    ));
+    const evKwh = EV_KWH[hh.ev];
+    const kwh = buildingKwh + evKwh;
+    const cost = kwh * ELEC_PRICE;
+    const co2 = kwh * CO2_KWH;
+    return { ...p, occupants: hh.occ, buildingKwh, evKwh, kwh, cost, co2, costPerM2: ENERGY_KWH[p.energyLabel] * ELEC_PRICE };
+}
+
 function renderResults() {
-    const data = selected.map(s => {
-        const p = PROPERTIES.find(x => x.finnkode === s.finnkode);
-        const buildingKwh = ENERGY_KWH[p.energyLabel] * p.size;
-        const occupantKwh = s.occupants * KWH_PER_PERSON;
-        const kwh = buildingKwh + occupantKwh;
-        const cost = kwh * ELEC_PRICE;
-        const co2 = kwh * CO2_KWH;
-        return { ...p, occupants: s.occupants, buildingKwh, occupantKwh, kwh, cost, co2, costPerM2: ENERGY_KWH[p.energyLabel] * ELEC_PRICE };
+    const hh = getHouseholdParams();
+    const data = selected.map(fk => {
+        const p = PROPERTIES.find(x => x.finnkode === fk);
+        return calcProperty(p, hh);
     });
 
     const best = data.reduce((a, b) => a.cost < b.cost ? a : b);
@@ -619,6 +668,42 @@ function renderResults() {
     const maxCost = Math.max(...data.map(d => d.cost));
 
     let html = '';
+
+    // Household settings panel
+    const profOpts = t('hhProfileOpts');
+    const evOpts = t('hhEvOpts');
+    html += `<div class="household-panel">
+        <h3>${t('hhTitle')}</h3>
+        <p class="sub">${t('hhSub')}</p>
+        <div class="hh-grid">
+            <div class="hh-field">
+                <label>${t('hhOccupants')}</label>
+                <input type="number" id="hhOcc" min="1" max="8" value="${hh.occ}" onchange="renderResults()">
+            </div>
+            <div class="hh-field">
+                <label>${t('hhProfile')}</label>
+                <select id="hhProf" onchange="renderResults()">
+                    ${profOpts.map((o,i) => `<option value="${i}" ${i===hh.prof?'selected':''}>${o}</option>`).join('')}
+                </select>
+            </div>
+            <div class="hh-field">
+                <label>${t('hhTemp')}</label>
+                <select id="hhTemp" onchange="renderResults()">
+                    <option value="20" ${hh.temp===20?'selected':''}>20 °C</option>
+                    <option value="21" ${hh.temp===21?'selected':''}>21 °C</option>
+                    <option value="22" ${hh.temp===22?'selected':''}>22 °C</option>
+                    <option value="23" ${hh.temp===23?'selected':''}>23 °C+</option>
+                </select>
+                <div class="hint">${t('hhTempHint')}</div>
+            </div>
+            <div class="hh-field">
+                <label>${t('hhEv')}</label>
+                <select id="hhEv" onchange="renderResults()">
+                    ${evOpts.map((o,i) => `<option value="${i}" ${i===hh.ev?'selected':''}>${o}</option>`).join('')}
+                </select>
+            </div>
+        </div>
+    </div>`;
 
     // Summary
     html += `<div class="summary-banner">
@@ -640,7 +725,7 @@ function renderResults() {
             <div class="body">
                 <div class="label-tag" style="color:${ENERGY_COLORS[d.energyLabel]}">Finnkode ${d.finnkode}</div>
                 <div class="addr">${d.address}</div>
-                <div class="meta">${d.area}, ${d.city} · ${d.size} m² · ${d.rooms} ${t('rooms')} · ${d.yearBuilt} · ${d.occupants} ${t('persons')}</div>
+                <div class="meta">${d.area}, ${d.city} · ${d.size} m² · ${d.rooms} ${t('rooms')} · ${d.yearBuilt}</div>
                 <div class="price">${fkr(d.price)}</div>
                 <div class="energy-badge" style="background:${ENERGY_COLORS[d.energyLabel]}">${t('energyLabel')} ${d.energyLabel} · ${ENERGY_KWH[d.energyLabel]} kWh/m²/yr</div>
                 <div class="stats">
@@ -654,23 +739,23 @@ function renderResults() {
     });
     html += '</div>';
 
-    // Bar charts - stacked building + occupant
+    // Bar charts - stacked building + EV
     html += `<div class="section-card"><h3>${t('barKwhTitle')}</h3>
         <p style="font-size:0.75rem;color:var(--finn-grey-4);margin:-8px 0 14px">${t('occupantNote')}</p>`;
     data.forEach(d => {
         const bPct = (d.buildingKwh / maxKwh * 100);
-        const oPct = (d.occupantKwh / maxKwh * 100);
+        const ePct = (d.evKwh / maxKwh * 100);
         html += `<div class="bar-row">
-            <div class="bar-label">${d.address} (${d.occupants}p)</div>
+            <div class="bar-label">${d.address} (${d.energyLabel})</div>
             <div class="bar-track" style="display:flex">
-                <div class="bar-fill" style="background:${ENERGY_COLORS[d.energyLabel]};border-radius:5px 0 0 5px" data-w="${bPct}">${d.buildingKwh.toLocaleString('nb-NO')}</div>
-                <div class="bar-fill" style="background:var(--finn-grey-4);border-radius:0 5px 5px 0;opacity:0.7" data-w="${oPct}">+${d.occupantKwh.toLocaleString('nb-NO')}</div>
+                <div class="bar-fill" style="background:${ENERGY_COLORS[d.energyLabel]};border-radius:${ePct > 0 ? '5px 0 0 5px' : '5px'}" data-w="${bPct}">${d.buildingKwh.toLocaleString('nb-NO')}</div>
+                ${ePct > 0 ? `<div class="bar-fill" style="background:var(--finn-grey-4);border-radius:0 5px 5px 0;opacity:0.7" data-w="${ePct}">+${d.evKwh.toLocaleString('nb-NO')} EV</div>` : ''}
             </div>
         </div>`;
     });
     html += `<div style="display:flex;gap:16px;margin-top:8px;font-size:0.7rem;color:var(--finn-grey-4)">
         <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--finn-blue-dark);vertical-align:middle;margin-right:4px"></span>${t('buildingEnergy')}</span>
-        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--finn-grey-4);opacity:0.7;vertical-align:middle;margin-right:4px"></span>${t('occupantEnergy')}</span>
+        ${EV_KWH[getHouseholdParams().ev] > 0 ? `<span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--finn-grey-4);opacity:0.7;vertical-align:middle;margin-right:4px"></span>${t('hhEv')}</span>` : ''}
     </div></div>`;
 
     html += `<div class="section-card"><h3>${t('barCostTitle')}</h3>`;
@@ -695,10 +780,9 @@ function renderResults() {
         [t('rowYear'), d => d.yearBuilt],
         [t('rowHeating'), d => d.heating],
         [t('rowFelles'), d => fkr(d.felleskostnader)],
-        [t('occupants'), d => d.occupants],
         [t('rowKwhM2'), d => ENERGY_KWH[d.energyLabel]],
         [t('buildingEnergy'), d => d.buildingKwh.toLocaleString('nb-NO') + ' kWh'],
-        [t('occupantEnergy'), d => d.occupantKwh.toLocaleString('nb-NO') + ' kWh'],
+        [t('hhEv'), d => d.evKwh > 0 ? d.evKwh.toLocaleString('nb-NO') + ' kWh' : '—'],
         [t('rowTotalKwh'), d => `<strong>${d.kwh.toLocaleString('nb-NO')} kWh</strong>`],
         [t('rowCostYr'), d => { const cls = d.cost === bestCost ? 'best-val' : d.cost === worstCost ? 'worst-val' : 'hl'; return `<span class="${cls}">${fkr(d.cost)}</span>`; }],
         [t('rowCo2'), d => fkg(d.co2)],
