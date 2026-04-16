@@ -73,6 +73,10 @@
             border-radius: 20px; padding: 4px 12px; font-size: 0.8rem; font-weight: 500;
         }
         .pill .remove { cursor: pointer; color: var(--finn-coral); font-weight: 700; font-size: 0.9rem; }
+        .pill .occ-ctrl { display: inline-flex; align-items: center; gap: 3px; margin-left: 2px; }
+        .pill .occ-btn { background: var(--finn-blue-dark); color: white; border: none; width: 18px; height: 18px; border-radius: 50%; font-size: 0.7rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
+        .pill .occ-btn:hover { background: #0052d4; }
+        .pill .occ-val { font-weight: 700; font-size: 0.78rem; min-width: 14px; text-align: center; }
 
         /* Loading */
         .loading { display: none; text-align: center; padding: 50px 20px; }
@@ -288,6 +292,11 @@ const T = {
         sourcePrefix: 'Data scraped from FINN.no',
         sourceSuffix: 'Beregninger er veiledende',
         perMonth: '/mnd',
+        persons: 'pers.',
+        occupants: 'Beboere',
+        occupantEnergy: 'Personforbruk',
+        buildingEnergy: 'Bygningsforbruk',
+        occupantNote: 'Inkl. personforbruk: ~2 500 kWh/person/\u00e5r (varmtvann, apparater, belysning)',
     },
     en: {
         title: 'EnergiSjekk',
@@ -344,6 +353,11 @@ const T = {
         sourcePrefix: 'Data scraped from FINN.no',
         sourceSuffix: 'Calculations are indicative',
         perMonth: '/mo',
+        persons: 'pers.',
+        occupants: 'Occupants',
+        occupantEnergy: 'Occupant usage',
+        buildingEnergy: 'Building usage',
+        occupantNote: 'Incl. occupant usage: ~2,500 kWh/person/yr (hot water, appliances, lighting)',
     }
 };
 
@@ -523,7 +537,8 @@ const ENERGY_COLORS = { A:'#00A651', B:'#50B848', C:'#BFD730', D:'#FFF200', E:'#
 const ELEC_PRICE = 1.85; // kr/kWh NO1
 const CO2_KWH = 0.350; // kgCO2/kWh European residual mix
 
-let selected = [];
+let selected = []; // [{finnkode, occupants}]
+const KWH_PER_PERSON = 2500; // hot water, appliances, lighting per person per year
 
 // Populate dropdown
 const sel = document.getElementById('propSelect');
@@ -539,23 +554,38 @@ function fkg(n) { return n >= 1000 ? (n/1000).toFixed(1).replace('.',',') + ' to
 
 function addProperty() {
     const fk = sel.value;
-    if (!fk || selected.includes(fk)) return;
+    if (!fk || selected.find(s => s.finnkode === fk)) return;
     if (selected.length >= 5) { alert(t('alertMax')); return; }
-    selected.push(fk);
+    selected.push({ finnkode: fk, occupants: 1 });
     renderPills();
     sel.value = '';
 }
 
 function removeProperty(fk) {
-    selected = selected.filter(s => s !== fk);
+    selected = selected.filter(s => s.finnkode !== fk);
     renderPills();
+}
+
+function changeOccupants(fk, delta) {
+    const entry = selected.find(s => s.finnkode === fk);
+    if (entry) {
+        entry.occupants = Math.max(1, Math.min(8, entry.occupants + delta));
+        renderPills();
+    }
 }
 
 function renderPills() {
     const div = document.getElementById('pills');
-    div.innerHTML = selected.map(fk => {
-        const p = PROPERTIES.find(x => x.finnkode === fk);
-        return `<span class="pill">${p.address} (${p.energyLabel}) <span class="remove" onclick="removeProperty('${fk}')">&times;</span></span>`;
+    div.innerHTML = selected.map(s => {
+        const p = PROPERTIES.find(x => x.finnkode === s.finnkode);
+        return `<span class="pill">${p.address} (${p.energyLabel})
+            <span class="occ-ctrl">
+                <button class="occ-btn" onclick="changeOccupants('${s.finnkode}',-1)">&minus;</button>
+                <span class="occ-val">${s.occupants}</span>
+                <button class="occ-btn" onclick="changeOccupants('${s.finnkode}',1)">+</button>
+                <span style="font-size:0.65rem;color:var(--finn-grey-4)">${t('persons')}</span>
+            </span>
+            <span class="remove" onclick="removeProperty('${s.finnkode}')">&times;</span></span>`;
     }).join('');
 }
 
@@ -571,12 +601,14 @@ function runAgent() {
 }
 
 function renderResults() {
-    const props = selected.map(fk => PROPERTIES.find(p => p.finnkode === fk));
-    const data = props.map(p => {
-        const kwh = ENERGY_KWH[p.energyLabel] * p.size;
+    const data = selected.map(s => {
+        const p = PROPERTIES.find(x => x.finnkode === s.finnkode);
+        const buildingKwh = ENERGY_KWH[p.energyLabel] * p.size;
+        const occupantKwh = s.occupants * KWH_PER_PERSON;
+        const kwh = buildingKwh + occupantKwh;
         const cost = kwh * ELEC_PRICE;
         const co2 = kwh * CO2_KWH;
-        return { ...p, kwh, cost, co2, costPerM2: ENERGY_KWH[p.energyLabel] * ELEC_PRICE };
+        return { ...p, occupants: s.occupants, buildingKwh, occupantKwh, kwh, cost, co2, costPerM2: ENERGY_KWH[p.energyLabel] * ELEC_PRICE };
     });
 
     const best = data.reduce((a, b) => a.cost < b.cost ? a : b);
@@ -608,7 +640,7 @@ function renderResults() {
             <div class="body">
                 <div class="label-tag" style="color:${ENERGY_COLORS[d.energyLabel]}">Finnkode ${d.finnkode}</div>
                 <div class="addr">${d.address}</div>
-                <div class="meta">${d.area}, ${d.city} · ${d.size} m² · ${d.rooms} ${t('rooms')} · ${d.yearBuilt}</div>
+                <div class="meta">${d.area}, ${d.city} · ${d.size} m² · ${d.rooms} ${t('rooms')} · ${d.yearBuilt} · ${d.occupants} ${t('persons')}</div>
                 <div class="price">${fkr(d.price)}</div>
                 <div class="energy-badge" style="background:${ENERGY_COLORS[d.energyLabel]}">${t('energyLabel')} ${d.energyLabel} · ${ENERGY_KWH[d.energyLabel]} kWh/m²/yr</div>
                 <div class="stats">
@@ -622,15 +654,24 @@ function renderResults() {
     });
     html += '</div>';
 
-    // Bar charts
-    html += `<div class="section-card"><h3>${t('barKwhTitle')}</h3>`;
+    // Bar charts - stacked building + occupant
+    html += `<div class="section-card"><h3>${t('barKwhTitle')}</h3>
+        <p style="font-size:0.75rem;color:var(--finn-grey-4);margin:-8px 0 14px">${t('occupantNote')}</p>`;
     data.forEach(d => {
+        const bPct = (d.buildingKwh / maxKwh * 100);
+        const oPct = (d.occupantKwh / maxKwh * 100);
         html += `<div class="bar-row">
-            <div class="bar-label">${d.address} (${d.energyLabel})</div>
-            <div class="bar-track"><div class="bar-fill" style="background:${ENERGY_COLORS[d.energyLabel]}" data-w="${(d.kwh/maxKwh*100)}">${d.kwh.toLocaleString('nb-NO')} kWh</div></div>
+            <div class="bar-label">${d.address} (${d.occupants}p)</div>
+            <div class="bar-track" style="display:flex">
+                <div class="bar-fill" style="background:${ENERGY_COLORS[d.energyLabel]};border-radius:5px 0 0 5px" data-w="${bPct}">${d.buildingKwh.toLocaleString('nb-NO')}</div>
+                <div class="bar-fill" style="background:var(--finn-grey-4);border-radius:0 5px 5px 0;opacity:0.7" data-w="${oPct}">+${d.occupantKwh.toLocaleString('nb-NO')}</div>
+            </div>
         </div>`;
     });
-    html += `</div>`;
+    html += `<div style="display:flex;gap:16px;margin-top:8px;font-size:0.7rem;color:var(--finn-grey-4)">
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--finn-blue-dark);vertical-align:middle;margin-right:4px"></span>${t('buildingEnergy')}</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--finn-grey-4);opacity:0.7;vertical-align:middle;margin-right:4px"></span>${t('occupantEnergy')}</span>
+    </div></div>`;
 
     html += `<div class="section-card"><h3>${t('barCostTitle')}</h3>`;
     data.forEach(d => {
@@ -654,8 +695,11 @@ function renderResults() {
         [t('rowYear'), d => d.yearBuilt],
         [t('rowHeating'), d => d.heating],
         [t('rowFelles'), d => fkr(d.felleskostnader)],
+        [t('occupants'), d => d.occupants],
         [t('rowKwhM2'), d => ENERGY_KWH[d.energyLabel]],
-        [t('rowTotalKwh'), d => d.kwh.toLocaleString('nb-NO') + ' kWh'],
+        [t('buildingEnergy'), d => d.buildingKwh.toLocaleString('nb-NO') + ' kWh'],
+        [t('occupantEnergy'), d => d.occupantKwh.toLocaleString('nb-NO') + ' kWh'],
+        [t('rowTotalKwh'), d => `<strong>${d.kwh.toLocaleString('nb-NO')} kWh</strong>`],
         [t('rowCostYr'), d => { const cls = d.cost === bestCost ? 'best-val' : d.cost === worstCost ? 'worst-val' : 'hl'; return `<span class="${cls}">${fkr(d.cost)}</span>`; }],
         [t('rowCo2'), d => fkg(d.co2)],
     ];
