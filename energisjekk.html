@@ -627,12 +627,19 @@ function runAgent() {
     }, 2200);
 }
 
+// Persistent household state (survives re-render)
+let hhState = { occ: 2, prof: 1, temp: 21, ev: 0 };
+
 function getHouseholdParams() {
-    const occ = parseInt(document.getElementById('hhOcc')?.value) || 2;
-    const prof = parseInt(document.getElementById('hhProf')?.value) || 1;
-    const temp = parseInt(document.getElementById('hhTemp')?.value) || 21;
-    const ev = parseInt(document.getElementById('hhEv')?.value) || 0;
-    return { occ, prof, temp, ev };
+    return { ...hhState };
+}
+
+function updateHhState() {
+    hhState.occ = parseInt(document.getElementById('hhOcc')?.value) || hhState.occ;
+    hhState.prof = parseInt(document.getElementById('hhProf')?.value) ?? hhState.prof;
+    hhState.temp = parseInt(document.getElementById('hhTemp')?.value) || hhState.temp;
+    hhState.ev = parseInt(document.getElementById('hhEv')?.value) ?? hhState.ev;
+    renderResults();
 }
 
 function calcProperty(p, hh) {
@@ -678,28 +685,28 @@ function renderResults() {
         <div class="hh-grid">
             <div class="hh-field">
                 <label>${t('hhOccupants')}</label>
-                <input type="number" id="hhOcc" min="1" max="8" value="${hh.occ}" onchange="renderResults()">
+                <input type="number" id="hhOcc" min="1" max="8" value="${hhState.occ}" onchange="updateHhState()">
             </div>
             <div class="hh-field">
                 <label>${t('hhProfile')}</label>
-                <select id="hhProf" onchange="renderResults()">
-                    ${profOpts.map((o,i) => `<option value="${i}" ${i===hh.prof?'selected':''}>${o}</option>`).join('')}
+                <select id="hhProf" onchange="updateHhState()">
+                    ${profOpts.map((o,i) => `<option value="${i}" ${i===hhState.prof?'selected':''}>${o}</option>`).join('')}
                 </select>
             </div>
             <div class="hh-field">
                 <label>${t('hhTemp')}</label>
-                <select id="hhTemp" onchange="renderResults()">
-                    <option value="20" ${hh.temp===20?'selected':''}>20 °C</option>
-                    <option value="21" ${hh.temp===21?'selected':''}>21 °C</option>
-                    <option value="22" ${hh.temp===22?'selected':''}>22 °C</option>
-                    <option value="23" ${hh.temp===23?'selected':''}>23 °C+</option>
+                <select id="hhTemp" onchange="updateHhState()">
+                    <option value="20" ${hhState.temp===20?'selected':''}>20 °C</option>
+                    <option value="21" ${hhState.temp===21?'selected':''}>21 °C</option>
+                    <option value="22" ${hhState.temp===22?'selected':''}>22 °C</option>
+                    <option value="23" ${hhState.temp===23?'selected':''}>23 °C+</option>
                 </select>
                 <div class="hint">${t('hhTempHint')}</div>
             </div>
             <div class="hh-field">
                 <label>${t('hhEv')}</label>
-                <select id="hhEv" onchange="renderResults()">
-                    ${evOpts.map((o,i) => `<option value="${i}" ${i===hh.ev?'selected':''}>${o}</option>`).join('')}
+                <select id="hhEv" onchange="updateHhState()">
+                    ${evOpts.map((o,i) => `<option value="${i}" ${i===hhState.ev?'selected':''}>${o}</option>`).join('')}
                 </select>
             </div>
         </div>
