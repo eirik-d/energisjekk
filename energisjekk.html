@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EnergiSjekk — FINN Boligsammenligning</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --finn-blue-light: #06BEFB;
+            --finn-blue-dark: #0063FB;
+            --finn-text: #474445;
+            --finn-white: #FFFFFF;
+            --finn-grey-1: #E8EEF4;
+            --finn-grey-2: #DFE4E8;
+            --finn-grey-3: #A6A4A5;
+            --finn-grey-4: #666364;
+            --finn-grey-5: #505052;
+            --finn-grey-6: #353233;
+            --finn-blue-ice: #F1F9FF;
+            --finn-green: #28CD94;
+            --finn-green-light: #B7FFE4;
+            --finn-coral: #FF5844;
+            --finn-yellow: #FFEC99;
+            --finn-font: 'Inter', Arial, system-ui, sans-serif;
+            --finn-space-xs: clamp(0.25rem, 0.5vw, 0.5rem);
+            --finn-space-sm: clamp(0.5rem, 1vw, 1rem);
+            --finn-space-md: clamp(1rem, 2vw, 2rem);
+            --finn-radius-sm: 0.375rem;
+            --finn-radius-md: 0.75rem;
+            --finn-radius-lg: 1.25rem;
+            --energy-a: #00A651; --energy-b: #50B848; --energy-c: #BFD730;
+            --energy-d: #FFF200; --energy-e: #FCB813; --energy-f: #F37021; --energy-g: #ED1C24;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: var(--finn-font); color: var(--finn-text); background: var(--finn-grey-1); min-height: 100vh; }
+
+        .header { background: var(--finn-blue-dark); padding: 14px 24px; display: flex; align-items: center; gap: 14px; }
+        .header svg { height: 28px; width: auto; }
+        .header h1 { color: white; font-size: 1rem; font-weight: 600; }
+        .header .badge { background: rgba(255,255,255,0.15); color: white; font-size: 0.65rem; font-weight: 700; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+        /* Intro section */
+        .intro {
+            background: white; border-radius: var(--finn-radius-lg); padding: 28px 32px; margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .intro h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 4px; }
+        .intro p { color: var(--finn-grey-4); font-size: 0.9rem; margin-bottom: 16px; line-height: 1.5; }
+
+        /* Property selector */
+        .selector { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+        .sel-group { flex: 1; min-width: 180px; }
+        .sel-group label { display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--finn-grey-5); margin-bottom: 4px; }
+        .sel-group select {
+            width: 100%; padding: 10px 12px; border: 2px solid var(--finn-grey-2); border-radius: var(--finn-radius-sm);
+            font-family: var(--finn-font); font-size: 0.85rem; background: white; cursor: pointer;
+        }
+        .sel-group select:focus { outline: none; border-color: var(--finn-blue-dark); }
+        .btn { background: var(--finn-blue-dark); color: white; border: none; padding: 10px 24px; border-radius: var(--finn-radius-sm); font-family: var(--finn-font); font-size: 0.9rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        .btn:hover { background: #0052d4; }
+        .btn-secondary { background: var(--finn-grey-4); }
+        .btn-secondary:hover { background: var(--finn-grey-5); }
+
+        /* Selected pills */
+        .selected-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: var(--finn-blue-ice); border: 1px solid var(--finn-blue-dark);
+            border-radius: 20px; padding: 4px 12px; font-size: 0.8rem; font-weight: 500;
+        }
+        .pill .remove { cursor: pointer; color: var(--finn-coral); font-weight: 700; font-size: 0.9rem; }
+
+        /* Loading */
+        .loading { display: none; text-align: center; padding: 50px 20px; }
+        .loading.active { display: block; }
+        .spinner { width: 40px; height: 40px; border: 4px solid var(--finn-grey-2); border-top-color: var(--finn-blue-dark); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Results */
+        .results { display: none; }
+        .results.active { display: block; }
+
+        .summary-banner {
+            background: var(--finn-blue-dark); color: white; border-radius: var(--finn-radius-lg);
+            padding: 24px 28px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px;
+        }
+        .summary-icon { font-size: 2.2rem; }
+        .summary-text h3 { font-size: 1.15rem; font-weight: 800; margin-bottom: 2px; }
+        .summary-text p { font-size: 0.88rem; opacity: 0.85; line-height: 1.5; }
+
+        /* Cards */
+        .cards-grid { display: grid; gap: 16px; margin-bottom: 20px; }
+        .cards-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+        .cards-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .cards-grid.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+        .cards-grid.cols-5 { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; }
+        @media (max-width: 900px) { .cards-grid { grid-template-columns: 1fr 1fr !important; } }
+        @media (max-width: 550px) { .cards-grid { grid-template-columns: 1fr !important; } }
+
+        .prop-card { background: white; border-radius: var(--finn-radius-lg); overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .prop-card img { width: 100%; height: 160px; object-fit: cover; }
+        .prop-card .body { padding: 16px; }
+        .prop-card .label-tag { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+        .prop-card .addr { font-size: 1rem; font-weight: 700; margin-bottom: 1px; }
+        .prop-card .meta { font-size: 0.78rem; color: var(--finn-grey-4); margin-bottom: 10px; }
+        .prop-card .price { font-size: 1.15rem; font-weight: 800; color: var(--finn-blue-dark); margin-bottom: 12px; }
+        .energy-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 10px; border-radius: var(--finn-radius-sm);
+            font-weight: 700; font-size: 0.8rem; color: white; margin-bottom: 12px;
+        }
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .stat { background: var(--finn-blue-ice); border-radius: var(--finn-radius-sm); padding: 8px 10px; }
+        .stat .s-label { font-size: 0.62rem; font-weight: 700; color: var(--finn-grey-4); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
+        .stat .s-value { font-size: 0.95rem; font-weight: 800; }
+        .stat .s-value.good { color: var(--finn-green); }
+        .stat .s-value.bad { color: var(--finn-coral); }
+
+        /* Bar chart */
+        .section-card { background: white; border-radius: var(--finn-radius-lg); padding: 24px 28px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .section-card h3 { font-size: 1.05rem; font-weight: 800; margin-bottom: 16px; }
+        .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .bar-label { width: 160px; font-size: 0.78rem; font-weight: 500; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bar-track { flex: 1; height: 28px; background: var(--finn-grey-1); border-radius: 5px; overflow: hidden; }
+        .bar-fill { height: 100%; border-radius: 5px; display: flex; align-items: center; padding: 0 10px; font-size: 0.72rem; font-weight: 700; color: white; width: 0; transition: width 1s cubic-bezier(0.25,0.1,0.25,1); }
+
+        /* Comparison table */
+        .comp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .comp-table th { text-align: left; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--finn-grey-4); padding: 6px 10px; border-bottom: 2px solid var(--finn-grey-2); }
+        .comp-table td { padding: 10px; border-bottom: 1px solid var(--finn-grey-1); }
+        .comp-table .rl { font-weight: 500; color: var(--finn-grey-5); }
+        .comp-table .hl { font-weight: 700; }
+        .best-val { color: var(--finn-green); font-weight: 700; }
+        .worst-val { color: var(--finn-coral); font-weight: 700; }
+
+        /* TCO */
+        .tco { background: linear-gradient(135deg, var(--finn-blue-dark), #0052d4); color: white; border-radius: var(--finn-radius-lg); padding: 28px; margin-bottom: 20px; }
+        .tco h3 { font-size: 1.05rem; font-weight: 800; margin-bottom: 16px; }
+        .tco-grid { display: grid; gap: 14px; }
+        .tco-card { background: rgba(255,255,255,0.12); border-radius: var(--finn-radius-md); padding: 16px; }
+        .tco-card h4 { font-size: 0.72rem; font-weight: 700; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+        .tco-card .amount { font-size: 1.5rem; font-weight: 900; }
+        .tco-card .detail { font-size: 0.72rem; opacity: 0.65; margin-top: 3px; }
+        .tco-verdict { margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.2); text-align: center; }
+        .tco-verdict .diff { font-size: 1.6rem; font-weight: 900; }
+        .tco-verdict p { font-size: 0.82rem; opacity: 0.8; margin-top: 4px; }
+
+        /* Renovation */
+        .reno-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .reno-card { background: var(--finn-blue-ice); border-radius: var(--finn-radius-md); padding: 16px; }
+        .reno-card h4 { font-size: 0.82rem; font-weight: 700; margin-bottom: 3px; }
+        .reno-card .cost { font-size: 1.1rem; font-weight: 800; color: var(--finn-blue-dark); }
+        .reno-card .sav { font-size: 0.72rem; color: var(--finn-green); font-weight: 500; margin-top: 3px; }
+        .enova-box { background: var(--finn-green-light); border-radius: var(--finn-radius-md); padding: 14px 18px; display: flex; align-items: center; gap: 10px; font-size: 0.82rem; }
+        .enova-box strong { color: var(--finn-green); }
+
+        .footnote { background: var(--finn-blue-ice); border-radius: var(--finn-radius-md); padding: 14px 18px; font-size: 0.75rem; color: var(--finn-grey-4); line-height: 1.6; margin-bottom: 20px; }
+        .footnote strong { color: var(--finn-grey-5); }
+        .source-tag { text-align: center; padding: 16px; font-size: 0.7rem; color: var(--finn-grey-3); }
+        .source-tag a { color: var(--finn-blue-dark); text-decoration: none; }
+
+        /* Agent prompt section */
+        .agent-section { background: var(--finn-grey-6); color: white; border-radius: var(--finn-radius-lg); padding: 24px 28px; margin-bottom: 20px; }
+        .agent-section h3 { font-size: 1.05rem; font-weight: 800; margin-bottom: 8px; }
+        .agent-section pre { background: rgba(255,255,255,0.08); border-radius: var(--finn-radius-sm); padding: 14px; font-size: 0.75rem; line-height: 1.5; overflow-x: auto; white-space: pre-wrap; color: #ccc; }
+        .agent-section .copy-btn { background: var(--finn-blue-light); color: var(--finn-grey-6); border: none; padding: 6px 14px; border-radius: var(--finn-radius-sm); font-family: var(--finn-font); font-size: 0.75rem; font-weight: 700; cursor: pointer; margin-top: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <svg viewBox="0 0 72 32" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="72" height="32" rx="4" fill="white"/><text x="10" y="22" font-family="Inter,Arial,sans-serif" font-weight="900" font-size="18" fill="#0063FB">FINN</text><text x="52" y="22" font-family="Inter,Arial,sans-serif" font-weight="400" font-size="8" fill="#0063FB">.no</text></svg>
+    <h1>EnergiSjekk</h1>
+    <span class="badge">AI Agent Prototype</span>
+    <span class="badge" style="background:var(--finn-green)">20 ekte boliger</span>
+</div>
+
+<div class="container">
+    <!-- Intro -->
+    <div class="intro">
+        <h2>Sammenlign energikostnader for ekte FINN-boliger</h2>
+        <p>Velg 2-5 boliger fra databasen under. Agenten beregner energikostnad i NOK, CO&#8322;-utslipp, 10-års totalkostnad og oppgraderingspotensial basert på energimerke, areal, byggeår og oppvarmingskilde.</p>
+        <div class="selector">
+            <div class="sel-group" style="flex:2">
+                <label>Legg til bolig</label>
+                <select id="propSelect">
+                    <option value="">Velg en bolig...</option>
+                </select>
+            </div>
+            <button class="btn" onclick="addProperty()">+ Legg til</button>
+            <button class="btn btn-secondary" onclick="runAgent()">Kjor EnergiSjekk</button>
+        </div>
+        <div class="selected-pills" id="pills"></div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>EnergiSjekk-agenten analyserer boligene...</p>
+    </div>
+
+    <!-- Results -->
+    <div class="results" id="results"></div>
+</div>
+
+<script>
+const PROPERTIES = [
+  {
+    finnkode:"445268582", address:"Griniveien 4G", area:"Roa", city:"Oslo",
+    price:7950000, totalPrice:8074248, felleskostnader:3254, size:71, rooms:3, bedrooms:2,
+    floor:null, yearBuilt:2026, ownership:"Selveier", energyLabel:"A",
+    heating:"Vannbaren gulvvarme via jordvarme",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/16/2/445/268/582_ae98b8de-585e-477a-9aa8-2bc1c8d4f14e.jpg"
+  },
+  {
+    finnkode:"459193940", address:"Frysjaveien 42P", area:"Frysja/Grefsen", city:"Oslo",
+    price:16200000, totalPrice:16619990, felleskostnader:6425, size:140, rooms:5, bedrooms:3,
+    floor:2, yearBuilt:2021, ownership:"Selveier", energyLabel:"A",
+    heating:"Fjernvarme",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/13/0/459/193/940_7b439851-7030-4a21-be9d-c2da420a9f91.jpg"
+  },
+  {
+    finnkode:"460061504", address:"Etterstadsletta 45A", area:"Etterstad", city:"Oslo",
+    price:3900000, totalPrice:4754850, felleskostnader:8278, size:44, rooms:2, bedrooms:1,
+    floor:4, yearBuilt:2015, ownership:"Andel", energyLabel:"A",
+    heating:"Balansert ventilasjon",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/15/4/460/061/504_8f0d247f-057b-4c72-9a2a-044c8474b3d7.jpg"
+  },
+  {
+    finnkode:"460103054", address:"Selma Ellefsens vei 3L", area:"Ulven Park", city:"Oslo",
+    price:4350000, totalPrice:4368696, felleskostnader:3034, size:42, rooms:2, bedrooms:1,
+    floor:3, yearBuilt:2021, ownership:"Andel", energyLabel:"B",
+    heating:"Fjernvarme",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/16/4/460/103/054_c2160d0b-a374-45ae-a739-833d60a9a32f.jpg"
+  },
+  {
+    finnkode:"459980549", address:"Gladengveien 22", area:"Ensjo", city:"Oslo",
+    price:11500000, totalPrice:11788590, felleskostnader:7795, size:126, rooms:5, bedrooms:4,
+    floor:4, yearBuilt:2017, ownership:"Selveier", energyLabel:"B",
+    heating:"Fjernvarme",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/15/9/459/980/549_1726ece2-af90-466d-926e-f55faede1132.jpg"
+  },
+  {
+    finnkode:"459080308", address:"Hekkveien 1", area:"Helsfyr", city:"Oslo",
+    price:7300000, totalPrice:7907745, felleskostnader:7872, size:73, rooms:3, bedrooms:2,
+    floor:5, yearBuilt:1955, ownership:"Aksje", energyLabel:"C",
+    heating:"Sentralfyring",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/13/8/459/080/308_dfda3093-262f-4e29-9bd2-d9bc82deaf75.jpg"
+  },
+  {
+    finnkode:"449658118", address:"Waldemars hage 5", area:"Grunerløkka", city:"Oslo",
+    price:9500000, totalPrice:9750075, felleskostnader:3009, size:65, rooms:3, bedrooms:2,
+    floor:7, yearBuilt:2005, ownership:"Selveier", energyLabel:"C",
+    heating:"Vannbaren gulvvarme",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/09/8/449/658/118_b8fea16b-9e78-49cf-9c10-09347ab1f1f5.jpg"
+  },
+  {
+    finnkode:"459910172", address:"Hausmanns gate 19A", area:"Sentrum", city:"Oslo",
+    price:5300000, totalPrice:5342356, felleskostnader:3773, size:56, rooms:3, bedrooms:2,
+    floor:2, yearBuilt:1894, ownership:"Andel", energyLabel:"C",
+    heating:"Sentralfyring",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/14/2/459/910/172_8a35ba86-65aa-4c36-99b5-a0dc3f2c8e7c.jpg"
+  },
+  {
+    finnkode:"459982637", address:"Schouterrassen 17", area:"Helsfyr/Sinsen", city:"Oslo",
+    price:4990000, totalPrice:5217835, felleskostnader:5959, size:50, rooms:3, bedrooms:2,
+    floor:3, yearBuilt:1938, ownership:"Andel", energyLabel:"C",
+    heating:"Sentralfyring inkludert",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/16/7/459/982/637_3f585eae-2bd1-4d67-863d-77759a871cea.jpg"
+  },
+  {
+    finnkode:"459759966", address:"Karl Staaffs vei 72", area:"Ulven", city:"Oslo",
+    price:4750000, totalPrice:4768365, felleskostnader:4384, size:66, rooms:4, bedrooms:3,
+    floor:1, yearBuilt:1960, ownership:"Andel", energyLabel:"C",
+    heating:"Varmekabler",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/15/6/459/759/966_ca9901b1-6e4d-48f2-afbf-2bf9321b80e8.jpg"
+  },
+  {
+    finnkode:"451140200", address:"Mellombolgen 64", area:"Lambertseter", city:"Oslo",
+    price:4500000, totalPrice:4724484, felleskostnader:4665, size:65, rooms:3, bedrooms:2,
+    floor:3, yearBuilt:1956, ownership:"Andel", energyLabel:"D",
+    heating:"Sentralfyring",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/07/0/451/140/200_46dc518f-9db1-4395-9e6d-6e871292577e.jpg"
+  },
+  {
+    finnkode:"459897558", address:"Martin Linges vei 41", area:"Bogerud", city:"Oslo",
+    price:3250000, totalPrice:4211131, felleskostnader:10212, size:72, rooms:4, bedrooms:3,
+    floor:4, yearBuilt:1961, ownership:"Andel", energyLabel:"D",
+    heating:"Vannbaren radiatorer",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/16/8/459/897/558_91e39219-dcf0-4932-936b-984cc52799a4.jpg"
+  },
+  {
+    finnkode:"446387546", address:"Bygdoy alle 88", area:"Frogner", city:"Oslo",
+    price:6250000, totalPrice:6659299, felleskostnader:5277, size:58, rooms:3, bedrooms:2,
+    floor:1, yearBuilt:1937, ownership:"Selveier", energyLabel:"E",
+    heating:"Elektrisk",
+    image:"https://images.finncdn.no/dynamic/default/2026/1/vertical-2/16/6/446/387/546_ba0bb00d-e6cb-4787-9658-b22f6d87a573.jpg"
+  },
+  {
+    finnkode:"460021557", address:"Briskebyveien 17B", area:"Frogner", city:"Oslo",
+    price:6500000, totalPrice:6673540, felleskostnader:2184, size:61, rooms:2, bedrooms:1,
+    floor:3, yearBuilt:1890, ownership:"Selveier", energyLabel:"E",
+    heating:"Elektrisk",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/15/7/460/021/557_39c39547-4916-4d2e-914f-18ffdcc9df22.jpg"
+  },
+  {
+    finnkode:"459902429", address:"Treschows gate 15C", area:"Bjolsen", city:"Oslo",
+    price:5150000, totalPrice:5262678, felleskostnader:3993, size:49, rooms:2, bedrooms:1,
+    floor:4, yearBuilt:1939, ownership:"Andel", energyLabel:"E",
+    heating:"Fyring inkludert",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/16/9/459/902/429_1af9450b-a213-49b6-8839-1aeeed535cc8.jpg"
+  },
+  {
+    finnkode:"460032677", address:"Olaf Schous vei 20", area:"Sinsen", city:"Oslo",
+    price:4550000, totalPrice:4882854, felleskostnader:6399, size:53, rooms:3, bedrooms:2,
+    floor:2, yearBuilt:1937, ownership:"Selveier", energyLabel:"E",
+    heating:"Fjernvarme inkludert",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/15/7/460/032/677_9a0a1149-358e-45de-8acd-049052f0f2b5.jpg"
+  },
+  {
+    finnkode:"460021265", address:"Griffenfeldts gate 19D", area:"Sagene", city:"Oslo",
+    price:4950000, totalPrice:5287823, felleskostnader:6138, size:57, rooms:3, bedrooms:2,
+    floor:3, yearBuilt:1940, ownership:"Aksje", energyLabel:"E",
+    heating:"Fyring inkludert",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/15/5/460/021/265_16bac379-9966-4bbe-94a4-cd607cd498bc.jpg"
+  },
+  {
+    finnkode:"458055495", address:"Marcus Thranes gate 9", area:"Sagene/Torshov", city:"Oslo",
+    price:2990000, totalPrice:3256455, felleskostnader:3512, size:20, rooms:1, bedrooms:0,
+    floor:3, yearBuilt:1936, ownership:"Aksje", energyLabel:"F",
+    heating:"Strom/varme inkludert",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/01/5/458/055/495_517c9a2a-eca3-4b25-b385-e2f824525ab8.jpg"
+  },
+  {
+    finnkode:"459351848", address:"Haakon Tveters vei 38", area:"Ostensjo", city:"Oslo",
+    price:3950000, totalPrice:4034615, felleskostnader:4006, size:56, rooms:2, bedrooms:1,
+    floor:1, yearBuilt:1954, ownership:"Andel", energyLabel:"G",
+    heating:"Fjernvarme",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/10/8/459/351/848_91464f8e-9fb5-437a-b965-01752d5d25e7.jpg"
+  },
+  {
+    finnkode:"460124370", address:"Emil Korsmos vei 3", area:"Manglerud", city:"Oslo",
+    price:5000000, totalPrice:5594696, felleskostnader:7659, size:68, rooms:4, bedrooms:3,
+    floor:1, yearBuilt:1958, ownership:"Andel", energyLabel:"G",
+    heating:"Varmtvann/fyring inkludert",
+    image:"https://images.finncdn.no/dynamic/default/2026/4/vertical-2/16/0/460/124/370_834aa916-b131-4284-bb0c-b795c508720b.jpg"
+  }
+];
+
+// Energy label -> kWh/m2/year midpoints
+const ENERGY_KWH = { A:95, B:120, C:155, D:205, E:265, F:340, G:430 };
+const ENERGY_COLORS = { A:'#00A651', B:'#50B848', C:'#BFD730', D:'#FFF200', E:'#FCB813', F:'#F37021', G:'#ED1C24' };
+const ELEC_PRICE = 1.85; // kr/kWh NO1
+const CO2_KWH = 0.350; // kgCO2/kWh European residual mix
+
+let selected = [];
+
+// Populate dropdown
+const sel = document.getElementById('propSelect');
+PROPERTIES.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.finnkode;
+    opt.textContent = `${p.address} (${p.energyLabel}) — ${p.size}m² — ${fkr(p.price)} — ${p.yearBuilt}`;
+    sel.appendChild(opt);
+});
+
+function fkr(n) { return Math.round(n).toLocaleString('nb-NO') + ' kr'; }
+function fkg(n) { return n >= 1000 ? (n/1000).toFixed(1).replace('.',',') + ' tonn' : Math.round(n) + ' kg'; }
+
+function addProperty() {
+    const fk = sel.value;
+    if (!fk || selected.includes(fk)) return;
+    if (selected.length >= 5) { alert('Maks 5 boliger.'); return; }
+    selected.push(fk);
+    renderPills();
+    sel.value = '';
+}
+
+function removeProperty(fk) {
+    selected = selected.filter(s => s !== fk);
+    renderPills();
+}
+
+function renderPills() {
+    const div = document.getElementById('pills');
+    div.innerHTML = selected.map(fk => {
+        const p = PROPERTIES.find(x => x.finnkode === fk);
+        return `<span class="pill">${p.address} (${p.energyLabel}) <span class="remove" onclick="removeProperty('${fk}')">&times;</span></span>`;
+    }).join('');
+}
+
+function runAgent() {
+    if (selected.length < 2) { alert('Velg minst 2 boliger.'); return; }
+    document.getElementById('results').classList.remove('active');
+    document.getElementById('loading').classList.add('active');
+    setTimeout(() => {
+        document.getElementById('loading').classList.remove('active');
+        renderResults();
+        document.getElementById('results').classList.add('active');
+    }, 2200);
+}
+
+function renderResults() {
+    const props = selected.map(fk => PROPERTIES.find(p => p.finnkode === fk));
+    const data = props.map(p => {
+        const kwh = ENERGY_KWH[p.energyLabel] * p.size;
+        const cost = kwh * ELEC_PRICE;
+        const co2 = kwh * CO2_KWH;
+        return { ...p, kwh, cost, co2, costPerM2: ENERGY_KWH[p.energyLabel] * ELEC_PRICE };
+    });
+
+    const best = data.reduce((a, b) => a.cost < b.cost ? a : b);
+    const worst = data.reduce((a, b) => a.cost > b.cost ? a : b);
+    const costDiff = worst.cost - best.cost;
+    const colClass = `cols-${Math.min(data.length, 5)}`;
+    const maxKwh = Math.max(...data.map(d => d.kwh));
+    const maxCost = Math.max(...data.map(d => d.cost));
+
+    let html = '';
+
+    // Summary
+    html += `<div class="summary-banner">
+        <div class="summary-icon">⚡</div>
+        <div class="summary-text">
+            <h3>${fkr(costDiff)} forskjell i arlig energikostnad</h3>
+            <p>${worst.address} (${worst.energyLabel}) koster ${fkr(costDiff)} mer i energi per ar enn ${best.address} (${best.energyLabel}). Over 10 ar: ${fkr(costDiff * 10)}. CO&#8322;-forskjell: ${fkg(worst.co2 - best.co2)}/ar.</p>
+        </div>
+    </div>`;
+
+    // Cards
+    html += `<div class="cards-grid ${colClass}">`;
+    data.forEach(d => {
+        const l = d.energyLabel.toLowerCase();
+        const isBest = d === best;
+        const isWorst = d === worst;
+        html += `<div class="prop-card">
+            <img src="${d.image}" alt="${d.address}" loading="lazy">
+            <div class="body">
+                <div class="label-tag" style="color:${ENERGY_COLORS[d.energyLabel]}">Finnkode ${d.finnkode}</div>
+                <div class="addr">${d.address}</div>
+                <div class="meta">${d.area}, ${d.city} · ${d.size} m² · ${d.rooms} rom · ${d.yearBuilt}</div>
+                <div class="price">${fkr(d.price)}</div>
+                <div class="energy-badge" style="background:${ENERGY_COLORS[d.energyLabel]}">Energimerke ${d.energyLabel} · ${ENERGY_KWH[d.energyLabel]} kWh/m²/ar</div>
+                <div class="stats">
+                    <div class="stat"><div class="s-label">Energikostnad/ar</div><div class="s-value ${isBest?'good':isWorst?'bad':''}">${fkr(d.cost)}</div></div>
+                    <div class="stat"><div class="s-label">CO&#8322;/ar</div><div class="s-value">${fkg(d.co2)}</div></div>
+                    <div class="stat"><div class="s-label">Kostnad/m²</div><div class="s-value">${fkr(d.costPerM2)}/m²</div></div>
+                    <div class="stat"><div class="s-label">Felleskostnader</div><div class="s-value">${fkr(d.felleskostnader)}/mnd</div></div>
+                </div>
+            </div>
+        </div>`;
+    });
+    html += '</div>';
+
+    // Bar charts
+    html += `<div class="section-card"><h3>Energiforbruk (kWh/ar)</h3>`;
+    data.forEach(d => {
+        html += `<div class="bar-row">
+            <div class="bar-label">${d.address} (${d.energyLabel})</div>
+            <div class="bar-track"><div class="bar-fill" style="background:${ENERGY_COLORS[d.energyLabel]}" data-w="${(d.kwh/maxKwh*100)}">${d.kwh.toLocaleString('nb-NO')} kWh</div></div>
+        </div>`;
+    });
+    html += `</div>`;
+
+    html += `<div class="section-card"><h3>Arlig energikostnad (kr)</h3>`;
+    data.forEach(d => {
+        html += `<div class="bar-row">
+            <div class="bar-label">${d.address}</div>
+            <div class="bar-track"><div class="bar-fill" style="background:${ENERGY_COLORS[d.energyLabel]}" data-w="${(d.cost/maxCost*100)}">${fkr(d.cost)}</div></div>
+        </div>`;
+    });
+    html += `</div>`;
+
+    // Comparison table
+    html += `<div class="section-card"><h3>Detaljert sammenligning</h3><table class="comp-table"><thead><tr><th></th>`;
+    data.forEach(d => html += `<th>${d.address}</th>`);
+    html += '</tr></thead><tbody>';
+    const bestCost = Math.min(...data.map(d => d.cost));
+    const worstCost = Math.max(...data.map(d => d.cost));
+    const rows = [
+        ['Energimerke', d => `<span style="color:${ENERGY_COLORS[d.energyLabel]};font-weight:700">${d.energyLabel}</span>`],
+        ['Prisantydning', d => fkr(d.price)],
+        ['Areal (BRA-i)', d => d.size + ' m²'],
+        ['Bygger', d => d.yearBuilt],
+        ['Oppvarming', d => d.heating],
+        ['Felleskost/mnd', d => fkr(d.felleskostnader)],
+        ['kWh/m²/ar', d => ENERGY_KWH[d.energyLabel]],
+        ['Totalt forbruk', d => d.kwh.toLocaleString('nb-NO') + ' kWh'],
+        ['Energikostnad/ar', d => { const cls = d.cost === bestCost ? 'best-val' : d.cost === worstCost ? 'worst-val' : 'hl'; return `<span class="${cls}">${fkr(d.cost)}</span>`; }],
+        ['CO&#8322;/ar', d => fkg(d.co2)],
+    ];
+    rows.forEach(([label, fn]) => {
+        html += `<tr><td class="rl">${label}</td>`;
+        data.forEach(d => html += `<td>${fn(d)}</td>`);
+        html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+
+    // TCO
+    html += `<div class="tco"><h3>Totalkostnad over 10 ar (kjop + energi + felleskostnader)</h3><div class="tco-grid" style="grid-template-columns:repeat(${Math.min(data.length,5)},1fr)">`;
+    const tcos = data.map(d => {
+        const tco = d.totalPrice + (d.cost * 10) + (d.felleskostnader * 12 * 10);
+        return { ...d, tco };
+    });
+    const minTco = Math.min(...tcos.map(t => t.tco));
+    const cheapest = tcos.find(t => t.tco === minTco);
+    const mostExpensive = tcos.reduce((a,b) => a.tco > b.tco ? a : b);
+    tcos.forEach(t => {
+        html += `<div class="tco-card">
+            <h4>${t.address} (${t.energyLabel})</h4>
+            <div class="amount">${fkr(t.tco)}</div>
+            <div class="detail">Kjop: ${fkr(t.totalPrice)} · Energi: ${fkr(t.cost*10)} · Fellesutg: ${fkr(t.felleskostnader*120)}</div>
+        </div>`;
+    });
+    html += `</div><div class="tco-verdict">
+        <div class="diff">${cheapest.address} er ${fkr(mostExpensive.tco - cheapest.tco)} rimeligere</div>
+        <p>over 10 ar nar man inkluderer kjopspris, energi og felleskostnader</p>
+    </div></div>`;
+
+    // Renovation section for worst property
+    if (worst.energyLabel >= 'D') {
+        const upgradeCost = worst.size * 3500;
+        const annualSave = worst.cost - best.cost;
+        const payback = annualSave > 0 ? Math.round(upgradeCost / annualSave) : 99;
+        html += `<div class="section-card">
+            <h3>Oppgraderingspotensial: ${worst.address} (${worst.energyLabel} → ${best.energyLabel})</h3>
+            <p style="color:var(--finn-grey-4);font-size:0.85rem;margin-bottom:14px">Estimerte kostnader for energioppgradering</p>
+            <div class="reno-grid">
+                <div class="reno-card"><h4>Etterisolering + vinduer</h4><div class="cost">${fkr(worst.size*2500)}</div><div class="sav">Sparer ~40% energi</div></div>
+                <div class="reno-card"><h4>Varmepumpe (luft-luft)</h4><div class="cost">25 000–40 000 kr</div><div class="sav">Sparer ~25% energi</div></div>
+                <div class="reno-card"><h4>Full oppgradering</h4><div class="cost">${fkr(upgradeCost)}</div><div class="sav">Nedbetalt pa ~${payback} ar</div></div>
+            </div>
+            <div class="enova-box">🏠 Enova gir <strong>&nbsp;opptil 30% tilskudd&nbsp;</strong> til energioppgradering. Sjekk enova.no for stotteordninger.</div>
+        </div>`;
+    }
+
+    // Footnote
+    html += `<div class="footnote">
+        <strong>Metode:</strong> Energiforbruk beregnet fra energimerke (kWh/m²/ar) iht. Energimerkeforskriften.
+        Strompris: gjennomsnittlig NordPool Oslo-region (NO1) 2024/2025 inkl. nettleie og avgifter ≈ 1,85 kr/kWh.
+        CO&#8322;-utslipp: europeisk residualmiks (~350 gCO&#8322;/kWh). Norsk grid: ~19 gCO&#8322;/kWh.
+        Alle belop eks. evt. prisokninger. Energimerker er beregnet (ikke malt) — egnet for relativ sammenligning.
+    </div>`;
+
+    // Agent prompt
+    html += `<div class="agent-section">
+        <h3>AI Agent System Prompt</h3>
+        <pre id="agentPrompt">You are EnergiSjekk — Property Energy Comparison Agent.
+
+ROLE: Product Strategist, Real Estate Technology
+
+WHAT YOU DO:
+Buyers select 2-5 FINN.no listings. You extract energy label, size, building year,
+heating source, and price, then produce a side-by-side comparison showing:
+- Annual energy cost in NOK (by region and heating source)
+- CO2 emissions (European residual mix as lead, Norwegian grid as footnote)
+- 10-year total cost of ownership
+- Renovation potential with ballpark costs and Enova grant eligibility
+
+CO2 leads the framing, cost savings follow — deliberate design to reduce rebound effects.
+
+KEY CONSTRAINTS:
+- Energy labels = calculated (not metered), suitable for relative comparison
+- Must include heating source and size
+- Renovation costs use ballpark ranges by building type/year
+
+WORKFLOW:
+1. User provides 2-5 FINN listing URLs
+2. Extract property data (energy label, size, year, heating, price)
+3. Calculate kWh/year, NOK/year, CO2/year, 10-year TCO
+4. Compare side-by-side with visual charts
+5. Flag renovation potential for worst-rated property
+6. Note uncertainties and suggest next steps
+
+DATA: 20 real Oslo properties (A-G labels, 20-140m2, 1890-2026) loaded.</pre>
+        <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('agentPrompt').textContent)">Kopier prompt</button>
+    </div>`;
+
+    // Sources
+    html += `<div class="source-tag">Data scraped from FINN.no ${new Date().toLocaleDateString('nb-NO')} · ${data.map(d => `<a href="https://www.finn.no/realestate/homes/ad.html?finnkode=${d.finnkode}" target="_blank">${d.finnkode}</a>`).join(' · ')} · Beregninger er veiledende</div>`;
+
+    document.getElementById('results').innerHTML = html;
+
+    // Animate bars
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            document.querySelectorAll('.bar-fill[data-w]').forEach(el => {
+                el.style.width = el.dataset.w + '%';
+            });
+        }, 100);
+    });
+}
+</script>
+</body>
+</html>
